@@ -9,6 +9,8 @@ env:
   AWS_REGION: "ap-northeast-1"
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_ROLE_NAME: ${{ secrets.AWS_ROLE_NAME }}
+  DOCKER_BUILDKIT: "1"
+  APP_NAME: "sbcntr-frontend-app"
 
 jobs:
   deploy:
@@ -31,3 +33,23 @@ jobs:
       - name: Identity Check
         run: |
           aws sts get-caller-identity > /dev/null && echo "AWS Login OK"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        run: |
+          echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c 1-7)" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
+          
+          
